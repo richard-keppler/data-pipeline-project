@@ -25,7 +25,7 @@ data-pipeline-project/
 │   ├── load.py               # Load: raw files -> DuckDB table green_taxi
 │   ├── transform.py          # Transform: green_taxi -> daily_revenue (SQL)
 │   ├── pipeline.py           # Entry point: runs extract, load, transform in order
-│   └── flow.py               # Prefect version (optional, not implemented)
+│   └── flow.py               # Prefect version: the same steps as tasks in one flow
 ├── tests/
 │   ├── conftest.py           # puts src/taxi_pipeline on the import path for pytest
 │   └── test_transform.py     # tests for the transform step
@@ -59,6 +59,23 @@ uv run python src/taxi_pipeline/pipeline.py
 uv run python src/taxi_pipeline/extract.py     # download into data/raw/
 uv run python src/taxi_pipeline/load.py        # load into data/taxi.duckdb
 uv run python src/taxi_pipeline/transform.py   # calculate daily revenue
+```
+
+**With Prefect** (bonus task):
+
+`flow.py` wraps the three steps as Prefect **tasks** and runs them in order in
+the **flow** `elt_pipeline`. Prefect logs every flow run and task run with its
+status and duration.
+
+```bash
+uv run python src/taxi_pipeline/flow.py
+```
+
+To see the runs in the Prefect web UI, start the server in a second terminal
+first and open the address it prints (usually http://127.0.0.1:4200):
+
+```bash
+uv run prefect server start
 ```
 
 **Tests:**
@@ -151,7 +168,8 @@ the files, and load and transform use `CREATE OR REPLACE TABLE`.
 6. Wrote `transform.py`, which calculates trip count and revenue per day and
    stores the result as a table and as a CSV file.
 7. Wrote `pipeline.py` to run all steps in order, added tests and this README.
-8. Used a separate branch and pull request for each step.
+8. Added a Prefect version (`flow.py`) that runs the same steps as tasks in a flow.
+9. Used a separate branch and pull request for each step.
 
 ### 2. What challenges did you face?
 
@@ -164,20 +182,11 @@ the files, and load and transform use `CREATE OR REPLACE TABLE`.
   `COPY … TO` exports a file (CSV by default) instead of creating a table; table
   names cannot be passed as `?` parameters (only values can); one process at a time
   can hold the write lock on the database file.
-- **Data quality:** trips outside the requested period, negative and zero amounts,
-  disputed and free trips, and `NULL` values (where `= NULL` never matches and
-  `NOT IN` silently drops `NULL` rows).
 - **Defining revenue:** the brief does not say which amount counts as revenue, so I
   had to read the data dictionary and make (and document) my own decision.
 
 ### 3. What would you do differently if you had more time?
 
-- Orchestrate the pipeline with **Prefect** (`flow.py`), including retries for
-  the download.
-- Make the package installable (`[build-system]` in `pyproject.toml`) so imports
-  work the same everywhere, without adjusting `sys.path`.
 - Pass the target folder to `download_data` as a parameter instead of using a
   global constant, and add tests for extract and load.
-- Add data quality checks to the pipeline itself (e.g. warn if many rows are
-  filtered out) and use logging instead of `print`.
 - Make the period configurable instead of hard-coding January–March 2025.
