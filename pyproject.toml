@@ -17,6 +17,10 @@ dev = [
     "pytest>=9.1.1",
 ]
 
+[tool.pytest.ini_options]
+# Nur die eigenen Tests sammeln, nicht die der Referenzlösung in solution/
+testpaths = ["tests"]
+
 [tool.ty.environment]
 root = [".", "solution/src"]
 
